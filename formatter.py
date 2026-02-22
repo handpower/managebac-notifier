@@ -141,7 +141,8 @@ def _format_by_subject_plain(assignments: list[Assignment]) -> list[str]:
         for a in tasks:
             # Only show first tag (Summative/Formative) for brevity
             tag = f" [{a.tags[0]}]" if a.tags else ""
-            lines.append(f"    • {a.title}{tag} ({a.due_date_str})")
+            pin = "\U0001f4cc " if "Summative" in a.tags else ""
+            lines.append(f"    • {pin}{a.title}{tag} ({a.due_date_str})")
     return lines
 
 
@@ -156,7 +157,8 @@ def _format_by_subject(assignments: list[Assignment]) -> list[str]:
     for subject, tasks in by_subject.items():
         lines.append(f"  <b>{subject}</b>")
         for a in tasks:
+            pin = "\U0001f4cc " if "Summative" in a.tags else ""
             title = f'<a href="{a.url}">{a.title}</a>' if a.url else a.title
             tags = f" {a.tags_str}" if a.tags_str else ""
-            lines.append(f"    • {title}{tags} (due {a.due_date_str})")
+            lines.append(f"    • {pin}{title}{tags} (due {a.due_date_str})")
     return lines

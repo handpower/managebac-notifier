@@ -291,7 +291,7 @@ class ManageBacClient:
             # Find spans that contain date text (next to clock SVG)
             for span in desc_div.find_all("span", recursive=True):
                 span_text = span.get_text(strip=True)
-                parsed = self._parse_due_date(span_text)
+                parsed = self._parse_due_date(span_text, view)
                 if parsed:
                     due_date = parsed
                     break
@@ -335,30 +335,41 @@ class ManageBacClient:
             tags=tags,
         )
 
-    def _parse_due_date(self, text):
-        """Parse datetime from ManageBac format like 'Feb 22, 11:55 PM' or 'Mar 3, 8:00 AM'"""
+    def _parse_due_date(self, text, view=None):
+        """Parse datetime from ManageBac format like 'Feb 22, 11:55 PM' or 'Mar 3, 8:00 AM'
+
+        ManageBac doesn't include the year. We default to the current year,
+        but for overdue tasks a future date means it's actually last year
+        (e.g., "Dec 30" on the overdue page in Feb 2026 → Dec 30, 2025).
+        """
         if not text:
             return None
+        parsed = None
         # Try full datetime first: "Feb 22, 11:55 PM"
         match = re.match(r"([A-Z][a-z]{2})\s+(\d{1,2}),\s*(\d{1,2}:\d{2}\s*[AP]M)", text)
         if match:
             month_str, day_str, time_str = match.group(1), match.group(2), match.group(3)
             try:
-                return datetime.strptime(
+                parsed = datetime.strptime(
                     f"{month_str} {day_str} {CURRENT_YEAR} {time_str}",
                     "%b %d %Y %I:%M %p",
                 )
             except ValueError:
                 pass
-        # Fallback: date only "Feb 22"
-        match = re.match(r"([A-Z][a-z]{2})\s+(\d{1,2})", text)
-        if not match:
-            return None
-        month_str, day_str = match.group(1), match.group(2)
-        try:
-            return datetime.strptime(f"{month_str} {day_str} {CURRENT_YEAR}", "%b %d %Y")
-        except ValueError:
-            return None
+        if not parsed:
+            # Fallback: date only "Feb 22"
+            match = re.match(r"([A-Z][a-z]{2})\s+(\d{1,2})", text)
+            if not match:
+                return None
+            month_str, day_str = match.group(1), match.group(2)
+            try:
+                parsed = datetime.strptime(f"{month_str} {day_str} {CURRENT_YEAR}", "%b %d %Y")
+            except ValueError:
+                return None
+        # Overdue tasks can't be in the future — adjust year if needed
+        if parsed and view == "overdue" and parsed.date() > date.today():
+            parsed = parsed.replace(year=CURRENT_YEAR - 1)
+        return parsed
 
     def _parse_date(self, date_str):
         """Try multiple date formats"""

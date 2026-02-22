@@ -155,13 +155,14 @@ def _task_list_by_subject(assignments):
         })
         for a in tasks:
             tag = f" [{a.tags[0]}]" if a.tags else ""
+            bullet = "\U0001f4cc" if "Summative" in a.tags else "•"
             components.append({
                 "type": "box",
                 "layout": "horizontal",
                 "contents": [
                     {
                         "type": "text",
-                        "text": "•",
+                        "text": bullet,
                         "size": "xs",
                         "flex": 0,
                         "gravity": "top",
