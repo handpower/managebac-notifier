@@ -91,7 +91,7 @@ def cmd_run(config, args):
         for child in children:
             assignments = client.get_assignments(child, config.upcoming_days)
             child.assignments = _filter_assignments(assignments, config, child.name)
-            overdue = [a for a in child.assignments if a.is_overdue()]
+            overdue = [a for a in child.assignments if a.is_overdue(since=config.overdue_since)]
             upcoming = [a for a in child.assignments if a.is_upcoming(days=config.upcoming_days)]
             logger.info(
                 f"{child.name}: {len(overdue)} overdue, {len(upcoming)} upcoming"
@@ -102,14 +102,17 @@ def cmd_run(config, args):
 
     # Format message
     upcoming_days = config.upcoming_days
-    message = format_report(children, upcoming_days=upcoming_days)
+    overdue_since = config.overdue_since
+    message = format_report(children, upcoming_days=upcoming_days,
+                            overdue_since=overdue_since)
 
     if args.dry_run:
         print("\n--- DRY RUN (Telegram) ---")
         print(message)
         print("\n[Manage Ignore List] button")
         if config.line_enabled:
-            plain_message = format_report_plain(children, upcoming_days=upcoming_days)
+            plain_message = format_report_plain(children, upcoming_days=upcoming_days,
+                                                    overdue_since=overdue_since)
             print("\n--- DRY RUN (LINE) ---")
             print(plain_message)
         print("--- END ---")
@@ -124,7 +127,8 @@ def cmd_run(config, args):
     # Send to LINE group (Flex Message)
     if config.line_enabled:
         with LineNotifier(config.line_channel_token, config.line_group_id) as line:
-            line.send_flex_report(children, upcoming_days=upcoming_days)
+            line.send_flex_report(children, upcoming_days=upcoming_days,
+                                     overdue_since=overdue_since)
             logger.info("LINE notification sent!")
 
 

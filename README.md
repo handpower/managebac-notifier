@@ -10,6 +10,7 @@ Daily assignment notification tool for [ManageBac](https://www.managebac.com/) p
 - **Telegram notifications** — HTML formatted report with interactive ignore list via inline buttons
 - **LINE notifications** — Flex Message carousel with one card per child
 - **Ignore list** — mark tasks as "don't need to submit" via Telegram bot interaction
+- **Overdue cutoff** — `overdue_since` config to hide last-semester overdue tasks
 - **Configurable channels** — Telegram and LINE are both optional
 
 ## How It Works
@@ -85,6 +86,9 @@ line:
   group_id: "YOUR_GROUP_ID"
 
 upcoming_days: 3
+
+# Only show overdue tasks with due dates on or after this date
+# overdue_since: "2026-01-24"
 
 ignore_tasks:
   # - "some task to always ignore"

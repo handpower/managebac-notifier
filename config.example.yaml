@@ -22,6 +22,10 @@ line:
 # How many days ahead to consider "upcoming"
 upcoming_days: 3
 
+# Only show overdue tasks with due dates on or after this date
+# Useful to ignore last-semester overdue tasks after a break
+# overdue_since: "2026-01-24"
+
 # Tasks to ignore (won't appear in notifications)
 # Match by title substring (case-insensitive)
 ignore_tasks:

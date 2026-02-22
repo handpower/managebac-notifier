@@ -21,9 +21,11 @@ class Assignment:
     def _due_date_only(self) -> date | None:
         return self.due_date.date() if self.due_date else None
 
-    def is_overdue(self, today: date | None = None) -> bool:
+    def is_overdue(self, today: date | None = None, since: date | None = None) -> bool:
         today = today or date.today()
         if self.status in self._DONE_STATUSES:
+            return False
+        if since and self._due_date_only is not None and self._due_date_only < since:
             return False
         if self.status == "overdue":
             return True

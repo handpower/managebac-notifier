@@ -2,6 +2,7 @@
 
 import os
 import stat
+from datetime import date
 
 import yaml
 
@@ -32,6 +33,8 @@ class Config:
         self._line = data.get("line", {})
         self.upcoming_days = data.get("upcoming_days", 3)
         self.ignore_tasks = [s.lower() for s in data.get("ignore_tasks", []) if s]
+        overdue_since = data.get("overdue_since")
+        self.overdue_since = date.fromisoformat(overdue_since) if overdue_since else None
 
     @classmethod
     def load(cls, path=None):

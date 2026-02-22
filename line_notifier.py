@@ -50,12 +50,14 @@ class LineNotifier:
             raise RuntimeError(f"LINE push failed: {resp.status_code}")
         logger.info("LINE message sent successfully")
 
-    def send_flex_report(self, children, today=None, upcoming_days=3):
+    def send_flex_report(self, children, today=None, upcoming_days=3,
+                         overdue_since=None):
         """Send assignment report as Flex Message carousel"""
         today = today or date.today()
         bubbles = []
         for child in children:
-            bubble = _build_child_bubble(child, today, upcoming_days)
+            bubble = _build_child_bubble(child, today, upcoming_days,
+                                         overdue_since)
             if bubble:
                 bubbles.append(bubble)
 
@@ -74,9 +76,9 @@ class LineNotifier:
         self._push([message])
 
 
-def _build_child_bubble(child, today, upcoming_days=3):
+def _build_child_bubble(child, today, upcoming_days=3, overdue_since=None):
     """Build a Flex bubble for one child"""
-    overdue = [a for a in child.assignments if a.is_overdue(today)]
+    overdue = [a for a in child.assignments if a.is_overdue(today, since=overdue_since)]
     upcoming = [a for a in child.assignments if a.is_upcoming(today, upcoming_days)]
 
     if not overdue and not upcoming:

@@ -64,6 +64,19 @@ class TestAssignment:
         a = Assignment("hw", "Math", None, "pending", "Alice", tags=["Summative", "Classwork"])
         assert a.tags_str == "[Summative] [Classwork]"
 
+    def test_overdue_filtered_by_since(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 1, 20, 23, 55), "pending", "Alice")
+        assert a.is_overdue(today) is True
+        assert a.is_overdue(today, since=date(2026, 1, 24)) is False
+
+    def test_overdue_kept_after_since(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 10, 23, 55), "pending", "Alice")
+        assert a.is_overdue(today, since=date(2026, 1, 24)) is True
+
+    def test_overdue_since_none_no_filter(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 1, 10, 23, 55), "pending", "Alice")
+        assert a.is_overdue(today, since=None) is True
+
     def test_tags_str_empty(self):
         a = Assignment("hw", "Math", None, "pending", "Alice")
         assert a.tags_str == ""

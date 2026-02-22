@@ -93,3 +93,26 @@ class TestFormatReport:
 
         report_8d = format_report_plain(sample_children, today, upcoming_days=8)
         assert "History Reading" in report_8d
+
+    def test_overdue_since_filters_old_tasks(self, today):
+        """Tasks before overdue_since should not appear in overdue"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("Old HW", "Math", datetime(2026, 1, 15, 23, 55),
+                               "pending", "Alice"),
+                    Assignment("Recent HW", "Math", datetime(2026, 2, 10, 23, 55),
+                               "pending", "Alice"),
+                ],
+            )
+        ]
+        since = date(2026, 1, 24)
+        report = format_report(children, today, overdue_since=since)
+        assert "Old HW" not in report
+        assert "Recent HW" in report
+
+        plain = format_report_plain(children, today, overdue_since=since)
+        assert "Old HW" not in plain
+        assert "Recent HW" in plain
