@@ -128,7 +128,8 @@ def cmd_run(config, args):
     if config.line_enabled:
         with LineNotifier(config.line_channel_token, config.line_group_id) as line:
             line.send_flex_report(children, upcoming_days=upcoming_days,
-                                     overdue_since=overdue_since)
+                                     overdue_since=overdue_since,
+                                     child_colors=config.line_child_colors)
             logger.info("LINE notification sent!")
 
 

@@ -18,6 +18,8 @@ COLOR_ORANGE = "#FD7E14"
 COLOR_GRAY = "#6C757D"
 COLOR_BLUE = "#0D6EFD"
 
+DEFAULT_HEADER_COLOR = "#0D6EFD"
+
 
 class LineNotifier:
     """Sync LINE Messaging API client for push messages"""
@@ -51,13 +53,13 @@ class LineNotifier:
         logger.info("LINE message sent successfully")
 
     def send_flex_report(self, children, today=None, upcoming_days=3,
-                         overdue_since=None):
+                         overdue_since=None, child_colors=None):
         """Send assignment report as Flex Message carousel"""
         today = today or date.today()
         bubbles = []
         for child in children:
             bubble = _build_child_bubble(child, today, upcoming_days,
-                                         overdue_since)
+                                         overdue_since, child_colors)
             if bubble:
                 bubbles.append(bubble)
 
@@ -76,7 +78,8 @@ class LineNotifier:
         self._push([message])
 
 
-def _build_child_bubble(child, today, upcoming_days=3, overdue_since=None):
+def _build_child_bubble(child, today, upcoming_days=3, overdue_since=None,
+                        child_colors=None):
     """Build a Flex bubble for one child"""
     overdue = [a for a in child.assignments if a.is_overdue(today, since=overdue_since)]
     upcoming = [a for a in child.assignments if a.is_upcoming(today, upcoming_days)]
@@ -85,6 +88,7 @@ def _build_child_bubble(child, today, upcoming_days=3, overdue_since=None):
         return None
 
     child_short = child.name.split("(")[0].strip()
+    header_color = (child_colors or {}).get(child.managebac_id, DEFAULT_HEADER_COLOR)
 
     body_contents = []
 
@@ -113,7 +117,7 @@ def _build_child_bubble(child, today, upcoming_days=3, overdue_since=None):
                     "color": "#FFFFFF",
                 },
             ],
-            "backgroundColor": COLOR_BLUE,
+            "backgroundColor": header_color,
             "paddingAll": "15px",
         },
         "body": {

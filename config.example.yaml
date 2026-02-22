@@ -7,8 +7,10 @@ managebac:
 children:
   - name: "Child A"
     # id: "12345"  # Uncomment after running --explore
+    # color: "#9B59B6"  # LINE Flex Message header color
   - name: "Child B"
     # id: "67890"
+    # color: "#0D6EFD"
 
 telegram:
   bot_token_file: "~/.telegram-bot-token"

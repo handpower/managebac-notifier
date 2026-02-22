@@ -35,6 +35,13 @@ class Config:
         self.ignore_tasks = [s.lower() for s in data.get("ignore_tasks", []) if s]
         overdue_since = data.get("overdue_since")
         self.overdue_since = date.fromisoformat(overdue_since) if overdue_since else None
+        # LINE header colors keyed by child ID
+        self.line_child_colors = {}
+        for child in self.children:
+            color = child.get("color") if isinstance(child, dict) else None
+            child_id = child.get("id", "") if isinstance(child, dict) else ""
+            if color and child_id:
+                self.line_child_colors[child_id] = color
 
     @classmethod
     def load(cls, path=None):
