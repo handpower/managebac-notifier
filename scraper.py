@@ -281,7 +281,7 @@ class ManageBacClient:
         tags = []
         for badge in tile.select("span.badge-label"):
             tag_text = badge.get_text(strip=True)
-            if tag_text:
+            if tag_text and tag_text != "Pending":
                 tags.append(tag_text)
 
         # Due date — text next to clock icon in description
