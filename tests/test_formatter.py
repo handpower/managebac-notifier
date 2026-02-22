@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from formatter import format_report
+from formatter import format_report, format_report_plain
 from models import Assignment, ChildProfile
 
 
@@ -77,3 +77,19 @@ class TestFormatReport:
     def test_includes_time_in_due_date(self, sample_children, today):
         report = format_report(sample_children, today)
         assert "2/24 11:55" in report
+
+    def test_upcoming_days_parameter(self, sample_children, today):
+        """Tasks beyond default 3 days but within custom upcoming_days should appear"""
+        report_3d = format_report(sample_children, today, upcoming_days=3)
+        assert "History Reading" not in report_3d
+
+        report_8d = format_report(sample_children, today, upcoming_days=8)
+        assert "History Reading" in report_8d
+
+    def test_upcoming_days_plain(self, sample_children, today):
+        """Plain text formatter should also respect upcoming_days"""
+        report_3d = format_report_plain(sample_children, today, upcoming_days=3)
+        assert "History Reading" not in report_3d
+
+        report_8d = format_report_plain(sample_children, today, upcoming_days=8)
+        assert "History Reading" in report_8d

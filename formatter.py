@@ -15,7 +15,8 @@ MANAGE_BUTTON = {"inline_keyboard": [[{
 }]]}
 
 
-def format_report(children: list[ChildProfile], today: date | None = None) -> str:
+def format_report(children: list[ChildProfile], today: date | None = None,
+                   upcoming_days: int = 3) -> str:
     today = today or date.today()
     weekday = WEEKDAY_MAP[today.weekday()]
     date_str = today.strftime(f"%Y-%m-%d ({weekday})")
@@ -27,7 +28,7 @@ def format_report(children: list[ChildProfile], today: date | None = None) -> st
 
     for child in children:
         overdue = [a for a in child.assignments if a.is_overdue(today)]
-        upcoming = [a for a in child.assignments if a.is_upcoming(today)]
+        upcoming = [a for a in child.assignments if a.is_upcoming(today, upcoming_days)]
 
         lines.append(f"\n<b>{child.name}</b>")
 
@@ -46,7 +47,8 @@ def format_report(children: list[ChildProfile], today: date | None = None) -> st
     return "\n".join(lines)
 
 
-def build_manage_keyboard(children: list[ChildProfile], today: date | None = None):
+def build_manage_keyboard(children: list[ChildProfile], today: date | None = None,
+                          upcoming_days: int = 3):
     """Build the interactive 'manage' message with toggle buttons per task.
 
     Returns (text, reply_markup) tuple.
@@ -59,7 +61,7 @@ def build_manage_keyboard(children: list[ChildProfile], today: date | None = Non
     for child in children:
         all_tasks = [
             a for a in child.assignments
-            if a.is_overdue(today) or a.is_upcoming(today)
+            if a.is_overdue(today) or a.is_upcoming(today, upcoming_days)
         ]
         if not all_tasks:
             continue
@@ -93,7 +95,8 @@ def build_manage_keyboard(children: list[ChildProfile], today: date | None = Non
     return text, {"inline_keyboard": buttons}
 
 
-def format_report_plain(children: list[ChildProfile], today: date | None = None) -> str:
+def format_report_plain(children: list[ChildProfile], today: date | None = None,
+                        upcoming_days: int = 3) -> str:
     """Format report as plain text (for LINE)"""
     today = today or date.today()
     weekday = WEEKDAY_MAP[today.weekday()]
@@ -106,7 +109,7 @@ def format_report_plain(children: list[ChildProfile], today: date | None = None)
 
     for child in children:
         overdue = [a for a in child.assignments if a.is_overdue(today)]
-        upcoming = [a for a in child.assignments if a.is_upcoming(today)]
+        upcoming = [a for a in child.assignments if a.is_upcoming(today, upcoming_days)]
 
         lines.append(f"\n{child.name}")
 

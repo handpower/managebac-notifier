@@ -96,7 +96,7 @@ def load_children_cache():
     return children
 
 
-def handle_callback(notifier, callback_query):
+def handle_callback(notifier, callback_query, upcoming_days=3):
     """Process a callback_query from an inline button press"""
     cb_id = callback_query["id"]
     data = callback_query.get("data", "")
@@ -114,7 +114,7 @@ def handle_callback(notifier, callback_query):
             notifier.answer_callback_query(cb_id, "No cached data. Run the notifier first.")
             return
 
-        text, keyboard = build_manage_keyboard(children)
+        text, keyboard = build_manage_keyboard(children, upcoming_days=upcoming_days)
         notifier.send_message(text, reply_markup=keyboard)
         notifier.answer_callback_query(cb_id)
         return
@@ -154,7 +154,7 @@ def handle_callback(notifier, callback_query):
         # Refresh the manage keyboard to update checkmarks
         children = load_children_cache()
         if children and message_id:
-            text, keyboard = build_manage_keyboard(children)
+            text, keyboard = build_manage_keyboard(children, upcoming_days=upcoming_days)
             try:
                 notifier.edit_message_text(message_id, text, reply_markup=keyboard)
             except Exception as e:
@@ -188,7 +188,8 @@ def run(config):
                 offset = update_id + 1
 
                 if "callback_query" in update:
-                    handle_callback(notifier, update["callback_query"])
+                    handle_callback(notifier, update["callback_query"],
+                                    upcoming_days=config.upcoming_days)
 
         except KeyboardInterrupt:
             break
