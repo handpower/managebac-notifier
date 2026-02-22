@@ -10,7 +10,9 @@ Daily assignment notification tool for [ManageBac](https://www.managebac.com/) p
 - **Telegram notifications** — HTML formatted report with interactive ignore list via inline buttons
 - **LINE notifications** — Flex Message carousel with one card per child
 - **Ignore list** — mark tasks as "don't need to submit" via Telegram bot interaction
+- **Summative highlight** — Summative tasks marked with pin emoji for visibility
 - **Overdue cutoff** — `overdue_since` config to hide last-semester overdue tasks
+- **Per-child colors** — customizable LINE Flex Message header colors per child
 - **Configurable channels** — Telegram and LINE are both optional
 
 ## How It Works
@@ -74,6 +76,14 @@ managebac:
   base_url: "https://YOUR_SCHOOL.managebac.com"
   email: "parent@example.com"
   password: "YOUR_PASSWORD"
+
+children:
+  - name: "Child A"
+    # id: "12345"  # Discovered by --explore
+    # color: "#9B59B6"  # LINE header color (optional)
+  - name: "Child B"
+    # id: "67890"
+    # color: "#0D6EFD"
 
 # Telegram (optional)
 telegram:

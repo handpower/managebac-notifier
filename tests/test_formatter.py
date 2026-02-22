@@ -116,3 +116,25 @@ class TestFormatReport:
         plain = format_report_plain(children, today, overdue_since=since)
         assert "Old HW" not in plain
         assert "Recent HW" in plain
+
+    def test_summative_pin_emoji(self, today):
+        """Summative tasks should have pin emoji, others should not"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("Quiz", "Math", datetime(2026, 2, 20, 23, 55),
+                               "overdue", "Alice", tags=["Summative"]),
+                    Assignment("Homework", "Math", datetime(2026, 2, 20, 23, 55),
+                               "overdue", "Alice", tags=["Formative"]),
+                ],
+            )
+        ]
+        report = format_report(children, today)
+        assert "\U0001f4cc Quiz" in report
+        assert "\U0001f4cc Homework" not in report
+
+        plain = format_report_plain(children, today)
+        assert "\U0001f4cc Quiz" in plain
+        assert "\U0001f4cc Homework" not in plain
