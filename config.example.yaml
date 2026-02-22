@@ -1,0 +1,29 @@
+managebac:
+  base_url: "https://YOUR_SCHOOL.managebac.com"
+  email: "parent@example.com"
+  password: "YOUR_PASSWORD_HERE"
+
+# Children names (IDs will be discovered during --explore)
+children:
+  - name: "Child A"
+    # id: "12345"  # Uncomment after running --explore
+  - name: "Child B"
+    # id: "67890"
+
+telegram:
+  bot_token_file: "~/.telegram-bot-token"
+  chat_id: "YOUR_CHAT_ID"
+
+# LINE group notification (optional)
+line:
+  channel_token_file: "~/.line-channel-token"
+  group_id: "YOUR_GROUP_ID"
+
+# How many days ahead to consider "upcoming"
+upcoming_days: 3
+
+# Tasks to ignore (won't appear in notifications)
+# Match by title substring (case-insensitive)
+ignore_tasks:
+  # - "some task title to ignore"
+  # - "optional homework"
