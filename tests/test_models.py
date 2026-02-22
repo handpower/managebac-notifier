@@ -20,6 +20,10 @@ class TestAssignment:
         a = Assignment("hw", "Math", datetime(2026, 2, 20, 23, 55), "graded", "Alice")
         assert a.is_overdue(today) is False
 
+    def test_not_overdue_if_not_assessed(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 20, 23, 55), "not_assessed", "Alice")
+        assert a.is_overdue(today) is False
+
     def test_is_upcoming_within_3_days(self, today):
         a = Assignment("hw", "Math", datetime(2026, 2, 24, 11, 55), "pending", "Alice")
         assert a.is_upcoming(today, days=3) is True
@@ -34,6 +38,14 @@ class TestAssignment:
 
     def test_not_upcoming_if_submitted(self, today):
         a = Assignment("hw", "Math", datetime(2026, 2, 23, 8, 0), "submitted", "Alice")
+        assert a.is_upcoming(today, days=3) is False
+
+    def test_not_upcoming_if_not_assessed(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 23, 8, 0), "not_assessed", "Alice")
+        assert a.is_upcoming(today, days=3) is False
+
+    def test_not_upcoming_if_graded(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 23, 8, 0), "graded", "Alice")
         assert a.is_upcoming(today, days=3) is False
 
     def test_not_upcoming_if_overdue(self, today):

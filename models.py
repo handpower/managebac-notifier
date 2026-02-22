@@ -15,7 +15,7 @@ class Assignment:
     url: str = ""
     tags: list[str] = field(default_factory=list)
 
-    _DONE_STATUSES = ("submitted", "graded")
+    _DONE_STATUSES = ("submitted", "not_assessed", "graded")
 
     @property
     def _due_date_only(self) -> date | None:

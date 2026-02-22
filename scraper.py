@@ -307,7 +307,7 @@ class ManageBacClient:
                 status = "not_assessed"
             elif "submitted" in classes:
                 status = "submitted"
-            elif "graded" in classes or "assessed" in classes:
+            elif any(c in classes for c in ("graded", "assessed", "criteria", "assessment")):
                 status = "graded"
 
         # Also check the text inside score div
