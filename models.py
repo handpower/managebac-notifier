@@ -31,6 +31,17 @@ class Assignment:
             return True
         return self._due_date_only is not None and self._due_date_only < today
 
+    def is_due_soon(self, today: date | None = None, days: int = 2) -> bool:
+        """True if due within `days` from today (inclusive, not overdue, not done)"""
+        today = today or date.today()
+        if self.status in self._DONE_STATUSES:
+            return False
+        if self.status == "overdue":
+            return False
+        if self.due_date is None:
+            return False
+        return today <= self._due_date_only <= today + timedelta(days=days)
+
     def is_upcoming(self, today: date | None = None, days: int = 3) -> bool:
         today = today or date.today()
         if self.status in self._DONE_STATUSES:

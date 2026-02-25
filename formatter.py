@@ -15,6 +15,46 @@ MANAGE_BUTTON = {"inline_keyboard": [[{
 }]]}
 
 
+def _relative_due_label(a: Assignment, today: date) -> str:
+    """Return a relative label like '明天' or '後天' for due-soon items"""
+    if a.due_date is None:
+        return ""
+    delta = (a.due_date.date() - today).days
+    if delta == 0:
+        return "今天"
+    elif delta == 1:
+        return "明天"
+    elif delta == 2:
+        return "後天"
+    return ""
+
+
+def _format_urgent_summary(children: list[ChildProfile], today: date,
+                           overdue_since: date | None = None) -> list[str]:
+    """Build the urgent summary block: overdue + due within 48 hours"""
+    items = []
+    for child in children:
+        overdue = [a for a in child.assignments if a.is_overdue(today, since=overdue_since)]
+        due_soon = [a for a in child.assignments if a.is_due_soon(today)]
+
+        child_short = child.name.split("(")[0].strip()
+        for a in overdue:
+            pin = "\U0001f4cc " if "Summative" in a.tags else ""
+            items.append(f"  • [{child_short}] [逾期] {pin}{a.subject}: {a.title} ({a.due_date_str})")
+        for a in due_soon:
+            label = _relative_due_label(a, today)
+            pin = "\U0001f4cc " if "Summative" in a.tags else ""
+            items.append(f"  • [{child_short}] [{label}] {pin}{a.subject}: {a.title} ({a.due_date_str})")
+
+    if not items:
+        return []
+
+    lines = [f"\n\u26a0\ufe0f <b>需要注意 ({len(items)})</b>"]
+    lines.extend(items)
+    lines.append("\n─────────────────")
+    return lines
+
+
 def format_report(children: list[ChildProfile], today: date | None = None,
                    upcoming_days: int = 3, overdue_since: date | None = None) -> str:
     today = today or date.today()
@@ -25,6 +65,9 @@ def format_report(children: list[ChildProfile], today: date | None = None,
         f"<b>ManageBac Assignment Report</b>",
         f"<b>{date_str}</b>",
     ]
+
+    # Urgent summary at the top
+    lines.extend(_format_urgent_summary(children, today, overdue_since))
 
     for child in children:
         overdue = [a for a in child.assignments if a.is_overdue(today, since=overdue_since)]

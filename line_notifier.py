@@ -2,7 +2,7 @@
 
 import logging
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 
@@ -57,6 +57,12 @@ class LineNotifier:
         """Send assignment report as Flex Message carousel"""
         today = today or date.today()
         bubbles = []
+
+        # Summary bubble at the front
+        summary = _build_summary_bubble(children, today, overdue_since)
+        if summary:
+            bubbles.append(summary)
+
         for child in children:
             bubble = _build_child_bubble(child, today, upcoming_days,
                                          overdue_since, child_colors)
@@ -76,6 +82,112 @@ class LineNotifier:
             },
         }
         self._push([message])
+
+
+def _relative_due_label(a, today):
+    """Return a relative label like '明天' for due-soon items"""
+    if a.due_date is None:
+        return ""
+    delta = (a.due_date.date() - today).days
+    if delta == 0:
+        return "今天"
+    elif delta == 1:
+        return "明天"
+    elif delta == 2:
+        return "後天"
+    return ""
+
+
+COLOR_DARK_RED = "#B02A37"
+
+
+def _build_summary_bubble(children, today, overdue_since=None):
+    """Build a summary bubble listing overdue + due-soon items across all children"""
+    items = []
+    for child in children:
+        overdue = [a for a in child.assignments if a.is_overdue(today, since=overdue_since)]
+        due_soon = [a for a in child.assignments if a.is_due_soon(today)]
+        child_short = child.name.split("(")[0].strip()
+
+        for a in overdue:
+            pin = "\U0001f4cc " if "Summative" in a.tags else ""
+            items.append({
+                "label": "逾期",
+                "color": COLOR_RED,
+                "text": f"{pin}{a.subject}: {a.title}",
+                "child": child_short,
+                "due": a.due_date_str,
+            })
+        for a in due_soon:
+            label = _relative_due_label(a, today)
+            pin = "\U0001f4cc " if "Summative" in a.tags else ""
+            items.append({
+                "label": label,
+                "color": COLOR_ORANGE,
+                "text": f"{pin}{a.subject}: {a.title}",
+                "child": child_short,
+                "due": a.due_date_str,
+            })
+
+    if not items:
+        return None
+
+    body_contents = []
+    for item in items:
+        body_contents.append({
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": f"[{item['label']}] {item['child']}",
+                    "size": "xxs",
+                    "color": item["color"],
+                    "weight": "bold",
+                },
+                {
+                    "type": "text",
+                    "text": item["text"],
+                    "size": "xs",
+                    "wrap": True,
+                    "color": "#333333",
+                },
+                {
+                    "type": "text",
+                    "text": item["due"],
+                    "size": "xxs",
+                    "color": COLOR_GRAY,
+                },
+            ],
+            "margin": "lg",
+        })
+
+    return {
+        "type": "bubble",
+        "size": "mega",
+        "header": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": f"\u26a0\ufe0f 需要注意 ({len(items)})",
+                    "weight": "bold",
+                    "size": "lg",
+                    "color": "#FFFFFF",
+                },
+            ],
+            "backgroundColor": COLOR_DARK_RED,
+            "paddingAll": "15px",
+        },
+        "body": {
+            "type": "box",
+            "layout": "vertical",
+            "contents": body_contents,
+            "spacing": "sm",
+            "paddingAll": "15px",
+        },
+    }
 
 
 def _build_child_bubble(child, today, upcoming_days=3, overdue_since=None,

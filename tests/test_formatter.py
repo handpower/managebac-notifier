@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from formatter import format_report, format_report_plain
+from formatter import format_report, format_report_plain, _relative_due_label
 from models import Assignment, ChildProfile
 
 
@@ -16,6 +16,8 @@ class TestFormatReport:
         assert "Worksheet Ch.5" in report
         assert "Lab Report" in report
         assert "No overdue or upcoming" in report
+        # Urgent summary should appear at top
+        assert "需要注意" in report
 
     def test_grouped_by_subject(self, today):
         children = [
@@ -30,12 +32,15 @@ class TestFormatReport:
             )
         ]
         report = format_report(children, today)
-        assert "<b>Math</b>" in report
-        assert "<b>English</b>" in report
-        math_pos = report.index("<b>Math</b>")
-        hw1_pos = report.index("HW1")
-        hw2_pos = report.index("HW2")
-        english_pos = report.index("<b>English</b>")
+        # Check ordering in the detail section (after the summary separator)
+        detail_start = report.index("Overdue")
+        detail = report[detail_start:]
+        assert "<b>Math</b>" in detail
+        assert "<b>English</b>" in detail
+        math_pos = detail.index("<b>Math</b>")
+        hw1_pos = detail.index("HW1")
+        hw2_pos = detail.index("HW2")
+        english_pos = detail.index("<b>English</b>")
         assert math_pos < hw1_pos < hw2_pos < english_pos
 
     def test_no_assignments(self, today):
@@ -138,3 +143,169 @@ class TestFormatReport:
         plain = format_report_plain(children, today)
         assert "\U0001f4cc Quiz" in plain
         assert "\U0001f4cc Homework" not in plain
+
+
+class TestUrgentSummary:
+    def test_summary_includes_overdue_and_due_soon(self, today):
+        """Summary should list overdue items and items due within 48 hours"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("Overdue HW", "Math", datetime(2026, 2, 20, 23, 55),
+                               "overdue", "Alice"),
+                    Assignment("Tomorrow HW", "Science", datetime(2026, 2, 23, 11, 0),
+                               "pending", "Alice"),
+                    Assignment("Far Away HW", "English", datetime(2026, 2, 28, 23, 55),
+                               "pending", "Alice"),
+                ],
+            )
+        ]
+        report = format_report(children, today)
+        assert "需要注意 (2)" in report
+        assert "[逾期]" in report
+        assert "Overdue HW" in report
+        assert "[明天]" in report
+        assert "Tomorrow HW" in report
+        # Far away should NOT be in summary
+        summary_end = report.index("─────")
+        assert "Far Away HW" not in report[:summary_end]
+
+    def test_summary_appears_before_details(self, today):
+        """Urgent summary should appear before the per-child detail sections"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("hw", "Math", datetime(2026, 2, 20, 23, 55),
+                               "overdue", "Alice"),
+                ],
+            )
+        ]
+        report = format_report(children, today)
+        summary_pos = report.index("需要注意")
+        detail_pos = report.index("Overdue (1)")
+        assert summary_pos < detail_pos
+
+    def test_summary_not_shown_when_nothing_urgent(self, today):
+        """No summary if no overdue and no due-soon items"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("Far HW", "Math", datetime(2026, 2, 28, 23, 55),
+                               "pending", "Alice"),
+                ],
+            )
+        ]
+        report = format_report(children, today, upcoming_days=7)
+        assert "需要注意" not in report
+        assert "─────" not in report
+
+    def test_summary_relative_labels(self, today):
+        """Check correct labels: 今天, 明天, 後天"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("Today HW", "Math", datetime(2026, 2, 22, 23, 55),
+                               "pending", "Alice"),
+                    Assignment("Tomorrow HW", "Math", datetime(2026, 2, 23, 11, 0),
+                               "pending", "Alice"),
+                    Assignment("Day After HW", "Math", datetime(2026, 2, 24, 11, 0),
+                               "pending", "Alice"),
+                ],
+            )
+        ]
+        report = format_report(children, today)
+        assert "[今天]" in report
+        assert "[明天]" in report
+        assert "[後天]" in report
+
+    def test_summary_respects_overdue_since(self, today):
+        """Old overdue tasks filtered by overdue_since should not appear in summary"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("Old HW", "Math", datetime(2026, 1, 10, 23, 55),
+                               "pending", "Alice"),
+                    Assignment("Recent HW", "Math", datetime(2026, 2, 15, 23, 55),
+                               "pending", "Alice"),
+                ],
+            )
+        ]
+        since = date(2026, 1, 24)
+        report = format_report(children, today, overdue_since=since)
+        assert "Old HW" not in report
+        assert "Recent HW" in report
+
+    def test_summary_multi_child(self, today):
+        """Summary should show child name prefix for each item"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("HW A", "Math", datetime(2026, 2, 20, 23, 55),
+                               "overdue", "Alice"),
+                ],
+            ),
+            ChildProfile(
+                name="Bob",
+                managebac_id="2",
+                assignments=[
+                    Assignment("HW B", "Science", datetime(2026, 2, 23, 11, 0),
+                               "pending", "Bob"),
+                ],
+            ),
+        ]
+        report = format_report(children, today)
+        assert "需要注意 (2)" in report
+        assert "[Alice]" in report
+        assert "[Bob]" in report
+
+    def test_summary_summative_pin(self, today):
+        """Summative items in summary should have pin emoji"""
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment("Big Exam", "Math", datetime(2026, 2, 23, 23, 55),
+                               "pending", "Alice", tags=["Summative"]),
+                ],
+            )
+        ]
+        report = format_report(children, today)
+        summary_end = report.index("─────")
+        summary = report[:summary_end]
+        assert "\U0001f4cc" in summary
+        assert "Big Exam" in summary
+
+
+class TestRelativeDueLabel:
+    def test_today(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 22, 23, 55), "pending", "Alice")
+        assert _relative_due_label(a, today) == "今天"
+
+    def test_tomorrow(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 23, 10, 0), "pending", "Alice")
+        assert _relative_due_label(a, today) == "明天"
+
+    def test_day_after(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 24, 10, 0), "pending", "Alice")
+        assert _relative_due_label(a, today) == "後天"
+
+    def test_no_label_for_far_date(self, today):
+        a = Assignment("hw", "Math", datetime(2026, 2, 28, 10, 0), "pending", "Alice")
+        assert _relative_due_label(a, today) == ""
+
+    def test_no_date(self, today):
+        a = Assignment("hw", "Math", None, "pending", "Alice")
+        assert _relative_due_label(a, today) == ""
