@@ -94,8 +94,15 @@ class TelegramNotifier:
         })
 
     def get_updates(self, offset=None, timeout=0):
-        """Get pending updates from the bot"""
+        """Get pending updates from the bot (long polling, no retry)"""
         payload = {"timeout": timeout, "allowed_updates": ["callback_query"]}
         if offset:
             payload["offset"] = offset
-        return self._call("getUpdates", payload)
+        url = self._api_url("getUpdates")
+        resp = self.client.post(
+            url, json=payload, timeout=timeout + 10
+        )
+        result = resp.json()
+        if result.get("ok"):
+            return result.get("result", [])
+        raise NotificationError(f"getUpdates failed: {result}")
