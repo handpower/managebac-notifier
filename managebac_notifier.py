@@ -5,14 +5,16 @@ import argparse
 import logging
 import os
 import sys
+from copy import copy
 from datetime import date
 
 from config import Config
 from bot_listener import save_children_cache
-from formatter import MANAGE_BUTTON, format_report, format_report_plain
+from formatter import MANAGE_BUTTON, format_low_grade_alert, format_report, format_report_plain
 from ignored import load_ignored
 from line_notifier import LineNotifier
 from models import ChildProfile
+from notified_grades import is_notified, mark_notified
 from notifier import TelegramNotifier
 from scraper import LoginError, ManageBacClient, ScrapingError
 
@@ -88,6 +90,7 @@ def cmd_run(config, args):
             sys.exit(1)
 
         # Fetch assignments for each child
+        graded_children = []
         for child in children:
             assignments = client.get_assignments(child, config.upcoming_days)
             child.assignments = _filter_assignments(assignments, config, child.name)
@@ -96,6 +99,26 @@ def cmd_run(config, args):
             logger.info(
                 f"{child.name}: {len(overdue)} overdue, {len(upcoming)} upcoming"
             )
+
+            # Fetch graded assignments for low grade check
+            graded = client.get_graded_assignments(child)
+            # Filter to only new low grades not yet notified
+            threshold = config.low_grade_threshold
+            new_graded = []
+            for a in graded:
+                new_low = [g for g in a.low_grades(threshold)
+                           if not is_notified(a.task_id, g["criteria"])]
+                if new_low:
+                    a_copy = copy(a)
+                    a_copy.grades = new_low
+                    new_graded.append(a_copy)
+            if new_graded:
+                graded_child = ChildProfile(
+                    name=child.name,
+                    managebac_id=child.managebac_id,
+                    assignments=new_graded,
+                )
+                graded_children.append(graded_child)
 
     # Save cache for bot_listener to use when building manage keyboard
     save_children_cache(children)
@@ -106,10 +129,17 @@ def cmd_run(config, args):
     message = format_report(children, upcoming_days=upcoming_days,
                             overdue_since=overdue_since)
 
+    # Format low grade alert (Telegram only)
+    threshold = config.low_grade_threshold
+    low_grade_msg = format_low_grade_alert(graded_children, threshold)
+
     if args.dry_run:
         print("\n--- DRY RUN (Telegram) ---")
         print(message)
         print("\n[Manage Ignore List] button")
+        if low_grade_msg:
+            print("\n--- DRY RUN (Low Grade Alert — Telegram only) ---")
+            print(low_grade_msg)
         if config.line_enabled:
             plain_message = format_report_plain(children, upcoming_days=upcoming_days,
                                                     overdue_since=overdue_since)
@@ -123,6 +153,17 @@ def cmd_run(config, args):
         with TelegramNotifier(config.bot_token, config.chat_id) as notifier:
             notifier.send_message(message, reply_markup=MANAGE_BUTTON)
             logger.info("Telegram notification sent!")
+
+            # Send low grade alert as a separate message
+            if low_grade_msg:
+                notifier.send_message(low_grade_msg)
+                logger.info("Low grade alert sent!")
+                # Mark all sent grades as notified
+                for child in graded_children:
+                    for a in child.assignments:
+                        for g in a.grades:
+                            desc = f"{a.title} - {g['criteria_name']}: {g['score']}/{g['max_score']}"
+                            mark_notified(a.task_id, g["criteria"], desc)
 
     # Send to LINE group (Flex Message)
     if config.line_enabled:

@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from formatter import format_report, format_report_plain, _relative_due_label
+from formatter import format_low_grade_alert, format_report, format_report_plain, _relative_due_label
 from models import Assignment, ChildProfile
 
 
@@ -309,3 +309,132 @@ class TestRelativeDueLabel:
     def test_no_date(self, today):
         a = Assignment("hw", "Math", None, "pending", "Alice")
         assert _relative_due_label(a, today) == ""
+
+
+class TestLowGradeAlert:
+    def test_basic_alert(self):
+        children = [
+            ChildProfile(
+                name="Justin",
+                managebac_id="1",
+                assignments=[
+                    Assignment(
+                        "Unit Test", "Science",
+                        datetime(2026, 2, 20, 23, 55), "graded", "Justin",
+                        grades=[
+                            {"criteria": "D", "criteria_name": "D: Evaluating",
+                             "score": 2, "max_score": 8},
+                        ],
+                    ),
+                ],
+            )
+        ]
+        result = format_low_grade_alert(children, threshold=3)
+        assert "Low Grade Alert" in result
+        assert "<b>Justin</b>" in result
+        assert "D: Evaluating" in result
+        assert "<b>2</b>/8" in result
+        assert "Science: Unit Test" in result
+
+    def test_empty_when_no_low_grades(self):
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment(
+                        "hw", "Math", None, "graded", "Alice",
+                        grades=[
+                            {"criteria": "A", "criteria_name": "A: Knowing",
+                             "score": 5, "max_score": 8},
+                        ],
+                    ),
+                ],
+            )
+        ]
+        assert format_low_grade_alert(children, threshold=3) == ""
+
+    def test_multiple_children(self):
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment(
+                        "Essay", "English", datetime(2026, 2, 20, 23, 55),
+                        "graded", "Alice",
+                        grades=[{"criteria": "B", "criteria_name": "B: Inquiring",
+                                 "score": 1, "max_score": 8}],
+                    ),
+                ],
+            ),
+            ChildProfile(
+                name="Bob",
+                managebac_id="2",
+                assignments=[
+                    Assignment(
+                        "Lab", "Science", datetime(2026, 2, 21, 8, 0),
+                        "graded", "Bob",
+                        grades=[{"criteria": "C", "criteria_name": "C: Communicating",
+                                 "score": 3, "max_score": 8}],
+                    ),
+                ],
+            ),
+        ]
+        result = format_low_grade_alert(children, threshold=3)
+        assert "<b>Alice</b>" in result
+        assert "<b>Bob</b>" in result
+        assert "B: Inquiring" in result
+        assert "C: Communicating" in result
+
+    def test_includes_due_date(self):
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment(
+                        "hw", "Math", datetime(2026, 3, 1, 10, 0),
+                        "graded", "Alice",
+                        grades=[{"criteria": "A", "criteria_name": "A: Knowing",
+                                 "score": 2, "max_score": 8}],
+                    ),
+                ],
+            )
+        ]
+        result = format_low_grade_alert(children, threshold=3)
+        assert "due 3/1 10:00" in result
+
+    def test_no_due_date(self):
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment(
+                        "hw", "Math", None, "graded", "Alice",
+                        grades=[{"criteria": "A", "criteria_name": "A: Knowing",
+                                 "score": 2, "max_score": 8}],
+                    ),
+                ],
+            )
+        ]
+        result = format_low_grade_alert(children, threshold=3)
+        assert "due" not in result
+
+    def test_threshold_in_header(self):
+        children = [
+            ChildProfile(
+                name="Alice",
+                managebac_id="1",
+                assignments=[
+                    Assignment(
+                        "hw", "Math", None, "graded", "Alice",
+                        grades=[{"criteria": "A", "criteria_name": "A: Knowing",
+                                 "score": 2, "max_score": 8}],
+                    ),
+                ],
+            )
+        ]
+        result = format_low_grade_alert(children, threshold=4)
+        assert "\u2264 4" in result

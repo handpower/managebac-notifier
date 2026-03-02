@@ -243,6 +243,23 @@ class ManageBacClient:
         )
         return assignments
 
+    def get_graded_assignments(self, child):
+        """Fetch past assignments that have criteria grades"""
+        if not self._logged_in:
+            self.login()
+
+        self._switch_child(child.managebac_id)
+
+        past_url = f"{self.base_url}/parent/tasks_and_deadlines?view=past"
+        logger.info(f"Fetching past tasks: {past_url}")
+        resp = self.client.get(past_url)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "lxml")
+        all_tasks = self._parse_tasks(soup, child.name, "past")
+        graded = [t for t in all_tasks if t.grades]
+        logger.info(f"Found {len(graded)} graded assignments for {child.name}")
+        return graded
+
     def _parse_tasks(self, soup, child_name, view):
         """Parse task tiles from the tasks_and_deadlines page"""
         tasks = []
@@ -325,6 +342,28 @@ class ManageBacClient:
         if view == "overdue" and status in ("not_submitted", "pending"):
             status = "overdue"
 
+        # Grades — criteria scores from f-task-score--criteria
+        grades = []
+        criteria_div = tile.select_one(".f-task-score--criteria")
+        if criteria_div:
+            for item in criteria_div.select(".f-task-score__criteria-item"):
+                ps = item.find_all("p")
+                if len(ps) < 2:
+                    continue
+                criteria_p = ps[0]
+                score_p = ps[1]
+                criteria = criteria_p.get_text(strip=True)
+                criteria_name = criteria_p.get("data-bs-title", criteria)
+                score_text = score_p.get_text(strip=True)
+                match = re.match(r"(\d+)/(\d+)", score_text)
+                if match:
+                    grades.append({
+                        "criteria": criteria,
+                        "criteria_name": criteria_name,
+                        "score": int(match.group(1)),
+                        "max_score": int(match.group(2)),
+                    })
+
         return Assignment(
             title=title,
             subject=subject,
@@ -333,6 +372,7 @@ class ManageBacClient:
             child_name=child_name,
             url=url,
             tags=tags,
+            grades=grades,
         )
 
     def _parse_due_date(self, text, view=None):

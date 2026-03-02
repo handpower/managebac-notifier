@@ -80,3 +80,36 @@ class TestAssignment:
     def test_tags_str_empty(self):
         a = Assignment("hw", "Math", None, "pending", "Alice")
         assert a.tags_str == ""
+
+
+class TestLowGrades:
+    def test_low_grades_returns_below_threshold(self):
+        grades = [
+            {"criteria": "A", "criteria_name": "A: Knowing", "score": 2, "max_score": 8},
+            {"criteria": "B", "criteria_name": "B: Inquiring", "score": 5, "max_score": 8},
+            {"criteria": "C", "criteria_name": "C: Communicating", "score": 3, "max_score": 8},
+        ]
+        a = Assignment("hw", "Math", None, "graded", "Alice", grades=grades)
+        low = a.low_grades(threshold=3)
+        assert len(low) == 2
+        assert low[0]["criteria"] == "A"
+        assert low[1]["criteria"] == "C"
+
+    def test_low_grades_empty_when_all_above(self):
+        grades = [
+            {"criteria": "A", "criteria_name": "A: Knowing", "score": 5, "max_score": 8},
+        ]
+        a = Assignment("hw", "Math", None, "graded", "Alice", grades=grades)
+        assert a.low_grades(threshold=3) == []
+
+    def test_low_grades_no_grades(self):
+        a = Assignment("hw", "Math", None, "pending", "Alice")
+        assert a.low_grades() == []
+
+    def test_low_grades_custom_threshold(self):
+        grades = [
+            {"criteria": "D", "criteria_name": "D: Evaluating", "score": 4, "max_score": 8},
+        ]
+        a = Assignment("hw", "Math", None, "graded", "Alice", grades=grades)
+        assert a.low_grades(threshold=3) == []
+        assert len(a.low_grades(threshold=4)) == 1

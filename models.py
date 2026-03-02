@@ -14,6 +14,7 @@ class Assignment:
     child_name: str
     url: str = ""
     tags: list[str] = field(default_factory=list)
+    grades: list[dict] = field(default_factory=list)
 
     _DONE_STATUSES = ("submitted", "not_assessed", "graded")
 
@@ -63,6 +64,10 @@ class Assignment:
         if self.due_date is None:
             return "no date"
         return self.due_date.strftime("%-m/%-d %-H:%M")
+
+    def low_grades(self, threshold=3) -> list[dict]:
+        """Return grade dicts where score <= threshold"""
+        return [g for g in self.grades if g["score"] <= threshold]
 
     @property
     def tags_str(self) -> str:

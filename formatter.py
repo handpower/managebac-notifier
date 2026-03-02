@@ -189,6 +189,30 @@ def _format_by_subject_plain(assignments: list[Assignment]) -> list[str]:
     return lines
 
 
+def format_low_grade_alert(children: list[ChildProfile], threshold=3) -> str:
+    """Format low grade alert for Telegram (HTML). Returns empty string if no alerts."""
+    lines = []
+    for child in children:
+        child_lines = []
+        for a in child.assignments:
+            for g in a.low_grades(threshold):
+                score_str = f"<b>{g['score']}</b>/{g['max_score']}"
+                child_lines.append(
+                    f"  \u2022 {g['criteria_name']} \u2014 {score_str}\n"
+                    f"    {a.subject}: {a.title}"
+                    + (f" (due {a.due_date_str})" if a.due_date else "")
+                )
+        if child_lines:
+            lines.append(f"\n<b>{child.name}</b>")
+            lines.extend(child_lines)
+
+    if not lines:
+        return ""
+
+    header = f"\U0001f4c9 <b>Low Grade Alert</b> (score \u2264 {threshold})"
+    return header + "\n" + "\n".join(lines)
+
+
 def _format_by_subject(assignments: list[Assignment]) -> list[str]:
     """Group assignments by subject and format each group"""
     by_subject = defaultdict(list)
