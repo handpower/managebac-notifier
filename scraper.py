@@ -32,7 +32,7 @@ class ManageBacClient:
         self.email = email
         self.password = password
         self.client = httpx.Client(
-            timeout=30.0,
+            timeout=httpx.Timeout(30.0, connect=15.0),
             follow_redirects=True,
             headers={
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "

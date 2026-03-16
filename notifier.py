@@ -21,7 +21,7 @@ class TelegramNotifier:
     def __init__(self, bot_token, chat_id):
         self.bot_token = bot_token
         self.chat_id = chat_id
-        self.client = httpx.Client(timeout=30.0)
+        self.client = httpx.Client(timeout=httpx.Timeout(30.0, connect=15.0))
 
     def close(self):
         self.client.close()
@@ -39,7 +39,7 @@ class TelegramNotifier:
         """Call Telegram Bot API with retry"""
         url = self._api_url(method)
         last_error = None
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 resp = self.client.post(url, json=payload)
                 result = resp.json()
@@ -53,11 +53,11 @@ class TelegramNotifier:
                     logger.error(f"Telegram API error: {result}")
                     last_error = result
             except httpx.HTTPError as e:
-                logger.warning(f"Attempt {attempt + 1}/3 failed: {e}")
+                logger.warning(f"Attempt {attempt + 1}/4 failed: {e}")
                 last_error = e
-                if attempt < 2:
-                    time.sleep(2 ** attempt)
-        raise NotificationError(f"Failed after 3 attempts: {last_error}")
+                if attempt < 3:
+                    time.sleep(3 * (attempt + 1))
+        raise NotificationError(f"Failed after 4 attempts: {last_error}")
 
     def send_message(self, text, parse_mode="HTML", reply_markup=None):
         """Send a message, optionally with inline keyboard"""
