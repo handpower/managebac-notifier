@@ -41,6 +41,8 @@ class ManageBacClient:
             },
         )
         self._logged_in = False
+        self._current_child_id = None
+        self._csrf_token = None
 
     def close(self):
         self.client.close()
@@ -84,8 +86,16 @@ class ManageBacClient:
             )
 
         self._logged_in = True
+        self._update_csrf_token(login_resp.text)
         logger.info(f"Login successful, redirected to: {login_resp.url}")
         return login_resp
+
+    def _update_csrf_token(self, html):
+        """Extract and cache CSRF token from page HTML"""
+        soup = BeautifulSoup(html, "lxml")
+        meta = soup.find("meta", {"name": "csrf-token"})
+        if meta and meta.get("content"):
+            self._csrf_token = meta["content"]
 
     def explore(self, output_dir):
         """Explore the parent portal and save HTML pages for analysis"""
@@ -184,24 +194,28 @@ class ManageBacClient:
         return children
 
     def _switch_child(self, child_id):
-        """Switch active child via PUT request"""
+        """Switch active child via PUT request (skips if already on this child)"""
+        if self._current_child_id == child_id:
+            logger.debug(f"Already on child {child_id}, skipping switch")
+            return
+
         logger.info(f"Switching to child: {child_id}")
 
-        # Get CSRF token from a page first
-        resp = self.client.get(f"{self.base_url}/parent")
-        soup = BeautifulSoup(resp.text, "lxml")
-        meta_token = soup.find("meta", {"name": "csrf-token"})
-        csrf_token = meta_token["content"] if meta_token else ""
+        # Fetch CSRF token if not cached
+        if not self._csrf_token:
+            resp = self.client.get(f"{self.base_url}/parent")
+            self._update_csrf_token(resp.text)
 
         switch_resp = self.client.put(
             f"{self.base_url}/parent/child/{child_id}",
             headers={
-                "X-CSRF-Token": csrf_token,
+                "X-CSRF-Token": self._csrf_token or "",
                 "X-Requested-With": "XMLHttpRequest",
                 "Accept": "text/javascript, application/javascript",
             },
         )
         switch_resp.raise_for_status()
+        self._current_child_id = child_id
         logger.info(f"Switched to child {child_id}")
 
     def get_assignments(self, child, upcoming_days=3):

@@ -14,7 +14,7 @@ from formatter import MANAGE_BUTTON, format_low_grade_alert, format_report, form
 from ignored import load_ignored
 from line_notifier import LineNotifier
 from models import ChildProfile
-from notified_grades import is_notified, mark_notified
+from notified_grades import load_notified, mark_notified
 from notifier import TelegramNotifier
 from scraper import LoginError, ManageBacClient, ScrapingError
 
@@ -91,6 +91,8 @@ def cmd_run(config, args):
 
         # Fetch assignments for each child
         graded_children = []
+        already_notified = load_notified()
+        threshold = config.low_grade_threshold
         for child in children:
             assignments = client.get_assignments(child, config.upcoming_days)
             child.assignments = _filter_assignments(assignments, config, child.name)
@@ -103,11 +105,10 @@ def cmd_run(config, args):
             # Fetch graded assignments for low grade check
             graded = client.get_graded_assignments(child)
             # Filter to only new low grades not yet notified
-            threshold = config.low_grade_threshold
             new_graded = []
             for a in graded:
                 new_low = [g for g in a.low_grades(threshold)
-                           if not is_notified(a.task_id, g["criteria"])]
+                           if f"{a.task_id}:{g['criteria']}" not in already_notified]
                 if new_low:
                     a_copy = copy(a)
                     a_copy.grades = new_low
