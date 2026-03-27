@@ -2,6 +2,7 @@
 """ManageBac assignment notifier — daily Telegram notification"""
 
 import argparse
+import html
 import logging
 import os
 import sys
@@ -14,7 +15,7 @@ from formatter import MANAGE_BUTTON, format_low_grade_alert, format_report, form
 from ignored import load_ignored
 from line_notifier import LineNotifier
 from models import ChildProfile
-from notified_grades import load_notified, mark_notified
+from notified_grades import load_notified, save_notified
 from notifier import TelegramNotifier
 from scraper import LoginError, ManageBacClient, ScrapingError
 
@@ -159,12 +160,13 @@ def cmd_run(config, args):
             if low_grade_msg:
                 notifier.send_message(low_grade_msg)
                 logger.info("Low grade alert sent!")
-                # Mark all sent grades as notified
+                # Mark all sent grades as notified (batch write)
                 for child in graded_children:
                     for a in child.assignments:
                         for g in a.grades:
-                            desc = f"{a.title} - {g['criteria_name']}: {g['score']}/{g['max_score']}"
-                            mark_notified(a.task_id, g["criteria"], desc)
+                            key = f"{a.task_id}:{g['criteria']}"
+                            already_notified[key] = f"{a.title} - {g['criteria_name']}: {g['score']}/{g['max_score']}"
+                save_notified(already_notified)
 
     # Send to LINE group (Flex Message)
     if config.line_enabled:
@@ -235,7 +237,7 @@ def _send_error_notification(config, error_msg):
     try:
         with TelegramNotifier(config.bot_token, config.chat_id) as notifier:
             notifier.send_message(
-                f"<b>ManageBac Notifier Error</b>\n\n{error_msg}",
+                f"<b>ManageBac Notifier Error</b>\n\n{html.escape(str(error_msg))}",
             )
     except Exception:
         logger.error("Failed to send error notification to Telegram")

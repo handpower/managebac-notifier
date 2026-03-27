@@ -1,6 +1,5 @@
 """Telegram notification sender via Bot API"""
 
-import json
 import logging
 import time
 
@@ -36,7 +35,7 @@ class TelegramNotifier:
         return f"{TELEGRAM_API_BASE}{self.bot_token}/{method}"
 
     def _call(self, method, payload):
-        """Call Telegram Bot API with retry"""
+        """Call Telegram Bot API with retry and backoff"""
         url = self._api_url(method)
         last_error = None
         for attempt in range(4):
@@ -44,19 +43,18 @@ class TelegramNotifier:
                 resp = self.client.post(url, json=payload)
                 result = resp.json()
                 if not resp.is_success:
-                    logger.error(f"HTTP {resp.status_code}: {result}")
+                    logger.warning(f"Attempt {attempt + 1}/4: HTTP {resp.status_code}: {result}")
                     last_error = result
-                    continue
-                if result.get("ok"):
+                elif result.get("ok"):
                     return result.get("result")
                 else:
-                    logger.error(f"Telegram API error: {result}")
+                    logger.warning(f"Attempt {attempt + 1}/4: Telegram API error: {result}")
                     last_error = result
             except httpx.HTTPError as e:
                 logger.warning(f"Attempt {attempt + 1}/4 failed: {e}")
                 last_error = e
-                if attempt < 3:
-                    time.sleep(3 * (attempt + 1))
+            if attempt < 3:
+                time.sleep(3 * (attempt + 1))
         raise NotificationError(f"Failed after 4 attempts: {last_error}")
 
     def send_message(self, text, parse_mode="HTML", reply_markup=None):

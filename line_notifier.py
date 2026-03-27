@@ -6,6 +6,7 @@ from datetime import date, timedelta
 
 import httpx
 
+from formatter import _relative_due_label
 from models import Assignment, ChildProfile
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class LineNotifier:
     def __init__(self, channel_token, group_id):
         self.channel_token = channel_token
         self.group_id = group_id
-        self.client = httpx.Client(timeout=30.0)
+        self.client = httpx.Client(timeout=httpx.Timeout(30.0, connect=15.0))
 
     def close(self):
         self.client.close()
@@ -82,20 +83,6 @@ class LineNotifier:
             },
         }
         self._push([message])
-
-
-def _relative_due_label(a, today):
-    """Return a relative label like '明天' for due-soon items"""
-    if a.due_date is None:
-        return ""
-    delta = (a.due_date.date() - today).days
-    if delta == 0:
-        return "今天"
-    elif delta == 1:
-        return "明天"
-    elif delta == 2:
-        return "後天"
-    return ""
 
 
 COLOR_DARK_RED = "#B02A37"

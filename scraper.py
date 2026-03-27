@@ -13,7 +13,8 @@ from models import Assignment, ChildProfile
 
 logger = logging.getLogger(__name__)
 
-CURRENT_YEAR = date.today().year
+def _current_year():
+    return date.today().year
 
 
 class LoginError(Exception):
@@ -67,7 +68,7 @@ class ManageBacClient:
             raise LoginError("Could not find CSRF token on login page")
         csrf_token = token_input["value"]
 
-        logger.info(f"Logging in as {self.email}")
+        logger.info("Logging in to ManageBac")
         login_resp = self.client.post(
             f"{self.base_url}/sessions",
             data={
@@ -405,7 +406,7 @@ class ManageBacClient:
             month_str, day_str, time_str = match.group(1), match.group(2), match.group(3)
             try:
                 parsed = datetime.strptime(
-                    f"{month_str} {day_str} {CURRENT_YEAR} {time_str}",
+                    f"{month_str} {day_str} {_current_year()} {time_str}",
                     "%b %d %Y %I:%M %p",
                 )
             except ValueError:
@@ -417,33 +418,13 @@ class ManageBacClient:
                 return None
             month_str, day_str = match.group(1), match.group(2)
             try:
-                parsed = datetime.strptime(f"{month_str} {day_str} {CURRENT_YEAR}", "%b %d %Y")
+                parsed = datetime.strptime(f"{month_str} {day_str} {_current_year()}", "%b %d %Y")
             except ValueError:
                 return None
         # Overdue tasks can't be in the future — adjust year if needed
         if parsed and view == "overdue" and parsed.date() > date.today():
-            parsed = parsed.replace(year=CURRENT_YEAR - 1)
+            parsed = parsed.replace(year=_current_year() - 1)
         return parsed
-
-    def _parse_date(self, date_str):
-        """Try multiple date formats"""
-        if not date_str:
-            return None
-        formats = [
-            "%Y-%m-%d",
-            "%Y-%m-%dT%H:%M:%S",
-            "%b %d, %Y",
-            "%B %d, %Y",
-            "%d %b %Y",
-            "%d %B %Y",
-        ]
-        for fmt in formats:
-            try:
-                return datetime.strptime(date_str.strip(), fmt).date()
-            except ValueError:
-                continue
-        logger.debug(f"Could not parse date: {date_str}")
-        return None
 
     def _save_page(self, resp, output_dir, name):
         """Save response HTML to file"""
