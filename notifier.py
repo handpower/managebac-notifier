@@ -9,9 +9,43 @@ logger = logging.getLogger(__name__)
 
 TELEGRAM_API_BASE = "https://api.telegram.org/bot"
 
+# Telegram hard limit is 4096 chars per message; leave headroom for safety.
+MAX_MESSAGE_LENGTH = 4000
+
 
 class NotificationError(Exception):
     pass
+
+
+def _split_message(text, limit=MAX_MESSAGE_LENGTH):
+    """Split text into chunks under `limit`, breaking on line boundaries.
+
+    Lines are kept intact (so HTML tags like <a>...</a> never get cut in half).
+    A single line longer than `limit` is hard-split as a last resort.
+    """
+    if len(text) <= limit:
+        return [text]
+
+    chunks = []
+    current = []
+    current_len = 0
+    for line in text.split("\n"):
+        # +1 accounts for the "\n" that rejoins this line to the previous one.
+        line_cost = len(line) + (1 if current else 0)
+        if current and current_len + line_cost > limit:
+            chunks.append("\n".join(current))
+            current, current_len = [], 0
+            line_cost = len(line)
+
+        while len(line) > limit:
+            head, line = line[:limit], line[limit:]
+            chunks.append(head)
+        current.append(line)
+        current_len += len(line) + (1 if len(current) > 1 else 0)
+
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
 
 
 class TelegramNotifier:
@@ -58,17 +92,25 @@ class TelegramNotifier:
         raise NotificationError(f"Failed after 4 attempts: {last_error}")
 
     def send_message(self, text, parse_mode="HTML", reply_markup=None):
-        """Send a message, optionally with inline keyboard"""
-        payload = {
-            "chat_id": self.chat_id,
-            "text": text,
-            "parse_mode": parse_mode,
-            "disable_web_page_preview": True,
-        }
-        if reply_markup:
-            payload["reply_markup"] = reply_markup
-        result = self._call("sendMessage", payload)
-        logger.info("Telegram message sent successfully")
+        """Send a message, splitting into multiple parts if over the length limit.
+
+        The inline keyboard, if any, is attached only to the final part.
+        Returns the result of the last send.
+        """
+        chunks = _split_message(text)
+        result = None
+        for i, chunk in enumerate(chunks):
+            is_last = i == len(chunks) - 1
+            payload = {
+                "chat_id": self.chat_id,
+                "text": chunk,
+                "parse_mode": parse_mode,
+                "disable_web_page_preview": True,
+            }
+            if reply_markup and is_last:
+                payload["reply_markup"] = reply_markup
+            result = self._call("sendMessage", payload)
+        logger.info(f"Telegram message sent successfully ({len(chunks)} part(s))")
         return result
 
     def edit_message_text(self, message_id, text, parse_mode="HTML", reply_markup=None):
