@@ -169,7 +169,7 @@ def handle_callback(notifier, callback_query, upcoming_days=3,
 
 def run(config):
     """Main polling loop"""
-    notifier = TelegramNotifier(config.bot_token, config.chat_id)
+    notifier = TelegramNotifier(config.bot_token, config.chat_id, config.thread_id)
     offset = None
     running = True
 

@@ -1,7 +1,9 @@
 """YAML config loader for managebac-notifier"""
 
+import json
 import os
 import stat
+import subprocess
 from datetime import date
 
 import yaml
@@ -9,6 +11,7 @@ import yaml
 
 _CONFIG_DIR = os.path.expanduser("~/.config/managebac-notifier")
 _CONFIG_PATH = os.path.join(_CONFIG_DIR, "config.yaml")
+_TG_NOTIFY = os.path.expanduser("~/.local/bin/tg-notify")
 
 
 class _Section:
@@ -30,6 +33,7 @@ class Config:
         self.managebac = _Section(data.get("managebac", {}))
         self.children = data.get("children", [])
         self._telegram = data.get("telegram", {})
+        self._telegram_route = None
         self._line = data.get("line", {})
         self.upcoming_days = data.get("upcoming_days", 3)
         self.low_grade_threshold = data.get("low_grade_threshold", 3)
@@ -71,17 +75,42 @@ class Config:
 
     @property
     def telegram_enabled(self):
+        if self._telegram.get("tg_notify_topic"):
+            return True
         return bool(self._telegram.get("bot_token_file") and self._telegram.get("chat_id"))
 
     @property
     def bot_token(self):
-        token_file = os.path.expanduser(self._telegram["bot_token_file"])
+        token_file = os.path.expanduser(self._route()["token_file"])
         with open(token_file) as f:
             return f.read().strip()
 
     @property
     def chat_id(self):
-        return self._telegram["chat_id"]
+        return self._route()["chat"]
+
+    @property
+    def thread_id(self):
+        """Forum topic (message_thread_id) in a supergroup with Topics, or None."""
+        return self._route()["thread"]
+
+    def _route(self):
+        """Where Telegram messages go: a tg-notify topic when configured, else the explicit keys.
+
+        With `tg_notify_topic`, tg-notify's routes.toml stays the only place that
+        knows the chat, thread and token file; this asks it once per Config.
+        """
+        if self._telegram_route is None:
+            topic = self._telegram.get("tg_notify_topic")
+            if topic:
+                out = subprocess.run([_TG_NOTIFY, topic, "--route"], capture_output=True,
+                                     text=True, check=True, timeout=30).stdout
+                self._telegram_route = json.loads(out)
+            else:
+                self._telegram_route = {"chat": self._telegram["chat_id"],
+                                        "thread": self._telegram.get("thread_id"),
+                                        "token_file": self._telegram["bot_token_file"]}
+        return self._telegram_route
 
     @property
     def line_enabled(self):

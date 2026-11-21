@@ -152,7 +152,7 @@ def cmd_run(config, args):
 
     # Send to Telegram with a single "Manage Ignore List" button
     if config.telegram_enabled:
-        with TelegramNotifier(config.bot_token, config.chat_id) as notifier:
+        with TelegramNotifier(config.bot_token, config.chat_id, config.thread_id) as notifier:
             notifier.send_message(message, reply_markup=MANAGE_BUTTON)
             logger.info("Telegram notification sent!")
 
@@ -182,7 +182,7 @@ def cmd_test_telegram(config, args):
     if not config.telegram_enabled:
         print("Telegram is not configured. Add telegram section to config.yaml.")
         return
-    with TelegramNotifier(config.bot_token, config.chat_id) as notifier:
+    with TelegramNotifier(config.bot_token, config.chat_id, config.thread_id) as notifier:
         notifier.send_message(
             "<b>ManageBac Notifier</b>\n\nTest message — configuration is working!",
         )
@@ -235,7 +235,7 @@ def _send_error_notification(config, error_msg):
     if not config.telegram_enabled:
         return
     try:
-        with TelegramNotifier(config.bot_token, config.chat_id) as notifier:
+        with TelegramNotifier(config.bot_token, config.chat_id, config.thread_id) as notifier:
             notifier.send_message(
                 f"<b>ManageBac Notifier Error</b>\n\n{html.escape(str(error_msg))}",
             )

@@ -89,6 +89,9 @@ children:
 telegram:
   bot_token_file: "~/.telegram-bot-token"
   chat_id: "YOUR_CHAT_ID"
+  # thread_id: 4               # optional: forum topic in a supergroup with Topics enabled
+  # tg_notify_topic: "school"  # optional: take chat, thread and token file from tg-notify's
+  #                            # routes.toml instead of the three keys above
 
 # LINE (optional)
 line:

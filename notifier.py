@@ -51,9 +51,10 @@ def _split_message(text, limit=MAX_MESSAGE_LENGTH):
 class TelegramNotifier:
     """Sync Telegram Bot API client"""
 
-    def __init__(self, bot_token, chat_id):
+    def __init__(self, bot_token, chat_id, thread_id=None):
         self.bot_token = bot_token
         self.chat_id = chat_id
+        self.thread_id = thread_id
         self.client = httpx.Client(timeout=httpx.Timeout(30.0, connect=15.0))
 
     def close(self):
@@ -107,6 +108,8 @@ class TelegramNotifier:
                 "parse_mode": parse_mode,
                 "disable_web_page_preview": True,
             }
+            if self.thread_id is not None:
+                payload["message_thread_id"] = self.thread_id
             if reply_markup and is_last:
                 payload["reply_markup"] = reply_markup
             result = self._call("sendMessage", payload)
